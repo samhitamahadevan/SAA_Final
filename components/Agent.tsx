@@ -128,7 +128,7 @@ const Agent = ({
       let formattedQuestions = "";
       if (questions) {
         formattedQuestions = questions
-          .map((question) => `- ${question}`)
+          .map((q) => `- ${q.question} (Difficulty: ${q.difficulty})`)
           .join("\n");
       }
 

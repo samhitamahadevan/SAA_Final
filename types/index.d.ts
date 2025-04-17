@@ -17,12 +17,18 @@ interface Interview {
   id: string;
   role: string;
   level: string;
-  questions: string[];
+  questions: Array<{
+    question: string;
+    difficulty: number;
+  }>;
   techstack: string[];
   createdAt: string;
   userId: string;
   type: string;
   finalized: boolean;
+  currentDifficulty: number;
+  maxDifficulty: number;
+  minDifficulty: number;
 }
 
 interface CreateFeedbackParams {
@@ -53,7 +59,11 @@ interface AgentProps {
   interviewId?: string;
   feedbackId?: string;
   type: "generate" | "interview";
-  questions?: string[];
+  questions?: Array<{
+    question: string;
+    difficulty: number;
+  }>;
+  profileImage?: string;
 }
 
 interface RouteParams {

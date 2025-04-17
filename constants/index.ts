@@ -131,25 +131,36 @@ Engage naturally & react appropriately:
 Listen actively to responses and acknowledge them before moving forward.
 Ask brief follow-up questions if a response is vague or requires more detail.
 Keep the conversation flowing smoothly while maintaining control.
-Be professional, yet warm and welcoming:
 
+Dynamic Difficulty Adjustment:
+- Monitor the candidate's responses for:
+  * Hesitation (frequent "umms", pauses)
+  * Confidence level
+  * Technical depth of answers
+  * Clarity and structure of responses
+- If the candidate is struggling:
+  * Make subsequent questions easier
+  * Provide more context or hints
+  * Focus on fundamental concepts
+- If the candidate is performing well:
+  * Increase question difficulty
+  * Ask more complex, scenario-based questions
+  * Challenge their knowledge with edge cases
+- Maintain a natural flow while adjusting difficulty
+
+Be professional, yet warm and welcoming:
 Use official yet friendly language.
 Keep responses concise and to the point (like in a real voice interview).
 Avoid robotic phrasing—sound natural and conversational.
-Answer the candidate’s questions professionally:
 
+Answer the candidate's questions professionally:
 If asked about the role, company, or expectations, provide a clear and relevant answer.
 If unsure, redirect the candidate to HR for more details.
 
 Conclude the interview properly:
 Thank the candidate for their time.
 Inform them that the company will reach out soon with feedback.
-End the conversation on a polite and positive note.
-
-
-- Be sure to be professional and polite.
-- Keep all your responses short and simple. Use official language, but be kind and welcoming.
-- This is a voice conversation, so keep your responses short, like in a real conversation. Don't ramble for too long.`,
+End the conversation on a polite and positive note.`,
       },
     ],
   },
@@ -188,6 +199,60 @@ export const feedbackSchema = z.object({
   areasForImprovement: z.array(z.string()),
   finalAssessment: z.string(),
 });
+
+export const interviewTypes = [
+  {
+    label: "Technical",
+    value: "technical",
+    description: "Focus on technical skills and problem-solving",
+    icon: "💻"
+  },
+  {
+    label: "Behavioral",
+    value: "behavioral",
+    description: "Focus on soft skills and past experiences",
+    icon: "🤝"
+  },
+  {
+    label: "Mixed",
+    value: "mixed",
+    description: "Balanced mix of technical and behavioral questions",
+    icon: "⚖️"
+  }
+];
+
+export const experienceLevels = [
+  {
+    label: "Junior",
+    value: "junior",
+    description: "0-2 years of experience",
+    icon: "🌱"
+  },
+  {
+    label: "Mid-Level",
+    value: "mid-level",
+    description: "2-5 years of experience",
+    icon: "⭐"
+  },
+  {
+    label: "Senior",
+    value: "senior",
+    description: "5+ years of experience",
+    icon: "🚀"
+  },
+  {
+    label: "Lead",
+    value: "lead",
+    description: "Team lead or architect role",
+    icon: "👑"
+  }
+];
+
+export const getInterviewIcon = (type: string) => {
+  const normalizedType = type.toLowerCase();
+  const interviewType = interviewTypes.find(t => t.value === normalizedType);
+  return interviewType?.icon || "💼";
+};
 
 export const interviewCovers = [
   "/adobe.png",
