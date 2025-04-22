@@ -6,107 +6,95 @@ import { getRandomInterviewCover } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
-    // Log the request body
-    const body = await request.json();
-    console.log("Received request body:", body);
+    const { role, type, level, techstack, amount = 5, userid } = await request.json();
 
-    const { role, type, level, techstack, amount, userid } = body;
-
-    // Validate required fields
-    if (!role || !type || !level || !techstack || !amount || !userid) {
-      console.error("Missing required fields:", { role, type, level, techstack, amount, userid });
-      return Response.json(
-        { success: false, error: "Missing required fields" },
+    if (!role || !type || !level || !techstack || !userid) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing required fields" }),
         { status: 400 }
       );
     }
 
-    console.log("Generating questions with parameters:", {
-      role,
-      type,
-      level,
-      techstack,
-      amount,
-    });
-
     // Generate questions
     const { text: rawQuestions } = await generateText({
       model: google("gemini-2.0-flash-001"),
-      prompt: `You are a helpful AI assistant generating interview questions. Your task is to generate ${amount} interview questions.
-
+      prompt: `Generate ${amount} interview questions.
 Role: ${role}
-Experience Level: ${level}
+Level: ${level}
+Type: ${type}
 Tech Stack: ${techstack}
-Focus: ${type}
 
-Important: You must respond with ONLY a valid JSON array of strings, nothing else. Example format:
-["What is your experience with X?","How would you handle Y?","Tell me about Z"]
+Important: Return ONLY an array of questions. Format must be exactly like this:
+["What is your experience with X?", "How would you implement Y?", "Explain the concept of Z"]
 
-Do not include any explanation, conversation, or other text. ONLY the JSON array.`,
+No additional text, no numbering, no explanations - just the array of questions.`,
     });
 
     console.log("Raw response from Gemini:", rawQuestions);
 
     let parsedQuestions;
     try {
-      // Try to parse the response as JSON
-      parsedQuestions = JSON.parse(rawQuestions.trim());
+      // Find the array in the response
+      const startIdx = rawQuestions.indexOf('[');
+      const endIdx = rawQuestions.lastIndexOf(']');
       
+      if (startIdx === -1 || endIdx === -1) {
+        throw new Error("Could not find array in response");
+      }
+
+      const arrayStr = rawQuestions.substring(startIdx, endIdx + 1);
+      parsedQuestions = JSON.parse(arrayStr);
+
       // Validate that it's an array of strings
       if (!Array.isArray(parsedQuestions) || !parsedQuestions.every(q => typeof q === 'string')) {
         throw new Error('Response is not an array of strings');
       }
-      
-      console.log("Successfully parsed questions:", parsedQuestions);
-    } catch (parseError) {
-      console.error("Failed to parse questions:", parseError);
-      console.log("Raw questions received:", rawQuestions);
-      
-      // If parsing fails, try to extract questions from the text
-      const questions = rawQuestions
-        .split('\n')
-        .filter(line => line.trim())
-        .map(line => line.replace(/^["\[\],]*/, '').replace(/["\[\],]*$/, '').trim())
-        .filter(line => line.length > 0 && !line.includes('```'));
-      
-      parsedQuestions = questions;
-      console.log("Extracted questions:", parsedQuestions);
+
+      // Clean up questions
+      parsedQuestions = parsedQuestions.map(q => q.trim()).filter(q => q.length > 0);
+
+      if (parsedQuestions.length !== amount) {
+        throw new Error(`Expected ${amount} questions but got ${parsedQuestions.length}`);
+      }
+
+      const interview = {
+        role,
+        type,
+        level,
+        techstack: Array.isArray(techstack) ? techstack : techstack.split(",").map((t: string) => t.trim()),
+        questions: parsedQuestions, // Store only the generated questions
+        userId: userid,
+        finalized: true,
+        coverImage: getRandomInterviewCover(),
+        createdAt: new Date().toISOString()
+      };
+
+      // Save to Firestore
+      const docRef = await db.collection("interviews").add(interview);
+      console.log("Saved interview with ID:", docRef.id);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          interviewId: docRef.id,
+        }),
+        { status: 200 }
+      );
+
+    } catch (error) {
+      console.error("Failed to process questions:", error);
+      throw new Error("Failed to generate valid questions format");
     }
 
-    const interview = {
-      role,
-      type,
-      level,
-      techstack: techstack.split(","),
-      questions: parsedQuestions,
-      userId: userid,
-      finalized: true,
-      coverImage: getRandomInterviewCover(),
-      createdAt: new Date().toISOString()
-    };
-
-    console.log("Saving interview:", interview);
-
-    // Save to Firestore
-    const docRef = await db.collection("interviews").add(interview);
-    console.log("Saved interview with ID:", docRef.id);
-
-    return Response.json({ 
-      success: true, 
-      interviewId: docRef.id 
-    }, { status: 200 });
-  } catch (error: any) {
-    // Log the full error
-    console.error("API Error:", {
-      name: error?.name,
-      message: error?.message,
-      stack: error?.stack,
-    });
-
-    return Response.json({ 
-      success: false, 
-      error: error?.message || "Internal server error" 
-    }, { status: 500 });
+  } catch (error) {
+    console.error("API Error:", error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }),
+      { status: 500 }
+    );
   }
 }
 
