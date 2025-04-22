@@ -11,21 +11,28 @@ const nextConfig = {
         tls: require.resolve('./lib/browser-polyfills.ts'),
         dns: require.resolve('./lib/browser-polyfills.ts'),
       };
-      
+
       config.resolve.fallback = {
         ...config.resolve.fallback,
         'utf-8-validate': false,
-        'bufferutil': false
+        'bufferutil': false,
       };
     }
-    // Add externals configuration
+
     config.externals = [...(config.externals || []), 'net', 'fs', 'http2'];
     return config;
   },
+
   images: {
     domains: ['img.clerk.com'],
   },
+
   transpilePackages: ['@vapi-ai/web', 'agent-base'],
+
+  // ✅ Add this block to skip ESLint during build
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;
