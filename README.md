@@ -5,12 +5,7 @@ PrepPal is a web-based AI assistant that helps users prepare for interviews by g
 
 ---
 
-## 🔧 Features
+## Features
 
-- ✨ AI-generated interview questions (powered by Google Gemini)
-- 🧠 Customizable by role, level, and tech stack
-- 🔒 User authentication with Clerk
-- 🗂️ Firestore database to store interviews
-- 🎨 Clean UI with auto-assigned interview covers
-
----
+-  AI-generated interview questions (powered by Google Gemini)
+-  Customizable by role, level, and tech stack
