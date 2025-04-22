@@ -1,15 +1,18 @@
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/actions/auth.action";
 import InterviewForm from "@/components/InterviewForm";
+import { getCurrentUser } from "@/lib/actions/auth.action";
 
-export default async function Interview() {
+const Page = async () => {
   const user = await getCurrentUser();
-  if (!user) redirect("/sign-in");
 
   return (
-    <div className="max-w-[1200px] mx-auto py-12">
-      <h1 className="text-4xl font-semibold mb-8 text-center">Create New Interview</h1>
-      <InterviewForm userId={user.id} userName={user.name} />
+    <div className="space-y-8">
+      <h3 className="text-2xl font-semibold text-center">Generate Interview Questions</h3>
+      <InterviewForm 
+        userId={user?.id!} 
+        userName={user?.name!} 
+      />
     </div>
   );
-}
+};
+
+export default Page;
