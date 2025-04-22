@@ -5,72 +5,108 @@ import { db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 
 export async function POST(request: Request) {
-  const { role, type, level, techstack, amount, userid } = await request.json();
-
   try {
-    // Map experience level to initial difficulty range
-    const difficultyRanges = {
-      "Junior": { min: 1, max: 3 },
-      "Mid-Level": { min: 2, max: 4 },
-      "Senior": { min: 3, max: 5 },
-      "Lead": { min: 4, max: 5 }
-    } as const;
+    // Log the request body
+    const body = await request.json();
+    console.log("Received request body:", body);
 
-    const difficultyRange = difficultyRanges[level as keyof typeof difficultyRanges] || { min: 1, max: 5 };
+    const { role, type, level, techstack, amount, userid } = body;
 
-    const { text: questions } = await generateText({
-      model: google("gemini-2.0-flash-001"),
-      prompt: `Prepare questions for a job interview.
-        The job role is ${role}.
-        The job experience level is ${level}.
-        The tech stack used in the job is: ${techstack}.
-        The focus between behavioural and technical questions should lean towards: ${type}.
-        The amount of questions required is: ${amount}.
-        
-        Generate questions with difficulty levels between ${difficultyRange.min} and ${difficultyRange.max}, where:
-        1 = Very Basic (fundamental concepts)
-        2 = Basic (straightforward application)
-        3 = Intermediate (requires some analysis)
-        4 = Advanced (complex scenarios)
-        5 = Expert (edge cases, optimization)
-        
-        Distribute the questions across the difficulty range, starting with easier questions and gradually increasing difficulty.
-        
-        Please return the questions in this format:
-        [
-          {"question": "Question 1", "difficulty": 2},
-          {"question": "Question 2", "difficulty": 3},
-          {"question": "Question 3", "difficulty": 4}
-        ]
-        
-        The questions are going to be read by a voice assistant so do not use "/" or "*" or any other special characters which might break the voice assistant.
-        
-        Thank you! <3
-    `,
+    // Validate required fields
+    if (!role || !type || !level || !techstack || !amount || !userid) {
+      console.error("Missing required fields:", { role, type, level, techstack, amount, userid });
+      return Response.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    console.log("Generating questions with parameters:", {
+      role,
+      type,
+      level,
+      techstack,
+      amount,
     });
 
-    const parsedQuestions = JSON.parse(questions);
+    // Generate questions
+    const { text: rawQuestions } = await generateText({
+      model: google("gemini-2.0-flash-001"),
+      prompt: `You are a helpful AI assistant generating interview questions. Your task is to generate ${amount} interview questions.
+
+Role: ${role}
+Experience Level: ${level}
+Tech Stack: ${techstack}
+Focus: ${type}
+
+Important: You must respond with ONLY a valid JSON array of strings, nothing else. Example format:
+["What is your experience with X?","How would you handle Y?","Tell me about Z"]
+
+Do not include any explanation, conversation, or other text. ONLY the JSON array.`,
+    });
+
+    console.log("Raw response from Gemini:", rawQuestions);
+
+    let parsedQuestions;
+    try {
+      // Try to parse the response as JSON
+      parsedQuestions = JSON.parse(rawQuestions.trim());
+      
+      // Validate that it's an array of strings
+      if (!Array.isArray(parsedQuestions) || !parsedQuestions.every(q => typeof q === 'string')) {
+        throw new Error('Response is not an array of strings');
+      }
+      
+      console.log("Successfully parsed questions:", parsedQuestions);
+    } catch (parseError) {
+      console.error("Failed to parse questions:", parseError);
+      console.log("Raw questions received:", rawQuestions);
+      
+      // If parsing fails, try to extract questions from the text
+      const questions = rawQuestions
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => line.replace(/^["\[\],]*/, '').replace(/["\[\],]*$/, '').trim())
+        .filter(line => line.length > 0 && !line.includes('```'));
+      
+      parsedQuestions = questions;
+      console.log("Extracted questions:", parsedQuestions);
+    }
+
     const interview = {
-      role: role,
-      type: type,
-      level: level,
+      role,
+      type,
+      level,
       techstack: techstack.split(","),
       questions: parsedQuestions,
       userId: userid,
       finalized: true,
       coverImage: getRandomInterviewCover(),
-      createdAt: new Date().toISOString(),
-      currentDifficulty: difficultyRange.min,
-      maxDifficulty: difficultyRange.max,
-      minDifficulty: difficultyRange.min
+      createdAt: new Date().toISOString()
     };
 
-    await db.collection("interviews").add(interview);
+    console.log("Saving interview:", interview);
 
-    return Response.json({ success: true }, { status: 200 });
-  } catch (error) {
-    console.error("Error:", error);
-    return Response.json({ success: false, error: error }, { status: 500 });
+    // Save to Firestore
+    const docRef = await db.collection("interviews").add(interview);
+    console.log("Saved interview with ID:", docRef.id);
+
+    return Response.json({ 
+      success: true, 
+      interviewId: docRef.id 
+    }, { status: 200 });
+  } catch (error: any) {
+    // Log the full error
+    console.error("API Error:", {
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack,
+    });
+
+    return Response.json({ 
+      success: false, 
+      error: error?.message || "Internal server error" 
+    }, { status: 500 });
   }
 }
 

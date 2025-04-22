@@ -34,6 +34,7 @@ const Agent = ({
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
+  const [hasInteractionStarted, setHasInteractionStarted] = useState(false);
 
   useEffect(() => {
     const onCallStart = () => {
@@ -48,6 +49,7 @@ const Agent = ({
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage = { role: message.role, content: message.transcript };
         setMessages((prev) => [...prev, newMessage]);
+        setHasInteractionStarted(true);
       }
     };
 
@@ -90,6 +92,13 @@ const Agent = ({
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
       console.log("handleGenerateFeedback");
 
+      // Only generate feedback if there was actual interaction
+      if (!hasInteractionStarted || messages.length < 2) {
+        console.log("No meaningful interaction detected, skipping feedback generation");
+        router.push("/");
+        return;
+      }
+
       const { success, feedbackId: id } = await createFeedback({
         interviewId: interviewId!,
         userId: userId!,
@@ -112,10 +121,12 @@ const Agent = ({
         handleGenerateFeedback(messages);
       }
     }
-  }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
+  }, [messages, callStatus, feedbackId, interviewId, router, type, userId, hasInteractionStarted]);
 
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);
+    setHasInteractionStarted(false);
+    setMessages([]);
 
     if (type === "generate") {
       await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
@@ -128,7 +139,7 @@ const Agent = ({
       let formattedQuestions = "";
       if (questions) {
         formattedQuestions = questions
-          .map((q) => `- ${q.question} (Difficulty: ${q.difficulty})`)
+          .map((question) => `- ${question}`)
           .join("\n");
       }
 
@@ -141,8 +152,12 @@ const Agent = ({
   };
 
   const handleDisconnect = () => {
-    setCallStatus(CallStatus.FINISHED);
-    vapi.stop();
+    if (!hasInteractionStarted) {
+      router.push("/");
+    } else {
+      setCallStatus(CallStatus.FINISHED);
+      vapi.stop();
+    }
   };
 
   return (

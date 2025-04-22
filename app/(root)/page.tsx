@@ -10,7 +10,10 @@ import {
   getLatestInterviews,
 } from "@/lib/actions/general.action";
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+  const interviews = user ? await getInterviewsByUserId(user.id) : [];
+
   return (
     <div className="max-w-[1200px] mx-auto ">
       {/* Hero Section */}
@@ -79,24 +82,39 @@ export default function Home() {
       {/* Your Interviews Section */}
       <section className="py-20 border-b border-[#EAEAEA]">
         <h2 className="text-[48px] leading-[1.2] font-normal text-black mb-12">Your Interviews</h2>
-        <div className="flex items-start gap-8">
-          {/* <div className="w-[200px] h-[200px] border-2 border-dashed border-[#EAEAEA] rounded-lg"></div> */}
-          <div className="w-[200px] h-[200px] flex items-center justify-center">
-            <Image
-              src="/file.png"
-              alt="No interviews"
-              width={250}
-              height={250}
-              className="opacity-80"
-            />
+        {interviews && interviews.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {interviews.map((interview) => (
+              <InterviewCard
+                key={interview.id}
+                interviewId={interview.id}
+                userId={user?.id}
+                role={interview.role}
+                type={interview.type}
+                techstack={interview.techstack}
+                createdAt={interview.createdAt}
+              />
+            ))}
           </div>
-          <div>
-            <h3 className="text-[36px] leading-[1.2] font-normal text-black mb-3">No interviews yet</h3>
-            <p className="text-xl text-[#666666] leading-relaxed">
-              Once you start an interview, it will appear here
-            </p>
+        ) : (
+          <div className="flex items-start gap-8">
+            <div className="w-[200px] h-[200px] flex items-center justify-center">
+              <Image
+                src="/file.png"
+                alt="No interviews"
+                width={250}
+                height={250}
+                className="opacity-80"
+              />
+            </div>
+            <div>
+              <h3 className="text-[36px] leading-[1.2] font-normal text-black mb-3">No interviews yet</h3>
+              <p className="text-xl text-[#666666] leading-relaxed">
+                Once you start an interview, it will appear here
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* Take Interviews Section */}

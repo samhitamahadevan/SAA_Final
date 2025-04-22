@@ -41,7 +41,7 @@ const Feedback = async ({ params }: RouteParams) => {
               <span className="text-primary-200 font-bold">
                 {feedback?.totalScore}
               </span>
-              /100
+              /10
             </p>
           </div>
 
@@ -67,7 +67,7 @@ const Feedback = async ({ params }: RouteParams) => {
         {feedback?.categoryScores?.map((category, index) => (
           <div key={index}>
             <p className="font-bold">
-              {index + 1}. {category.name} ({category.score}/100)
+              {index + 1}. {category.name} ({category.score}/10)
             </p>
             <p>{category.comment}</p>
           </div>

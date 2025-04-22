@@ -1,45 +1,56 @@
-import { auth } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
-import { db } from "@/firebase/admin";
-import ClientAgent from "@/components/interview/ClientAgent";
-import InterviewForm from "@/components/interview/InterviewForm";
+import { getInterviewIcon } from "@/constants";
+import Agent from "@/components/Agent";
+import DisplayTechIcons from "@/components/DisplayTechIcons";
+import {
+  getFeedbackByInterviewId,
+  getInterviewById,
+} from "@/lib/actions/general.action";
+import { getCurrentUser } from "@/lib/actions/auth.action";
 
-interface Interview {
-  userName?: string;
-  questions?: string[];
-}
+const InterviewDetails = async ({ params }: RouteParams) => {
+  const { id } = await params;
+  const user = await getCurrentUser();
 
-export default async function InterviewPage({ params }: { params: { id: string } }) {
-  const { userId } = auth();
-  if (!userId) redirect("/sign-in");
+  const interview = await getInterviewById(id);
+  if (!interview) redirect("/");
 
-  // Get interview data
-  const interviewDoc = await db.collection("interviews").doc(params.id).get();
-  const interview = interviewDoc.data() as Interview | undefined;
+  const feedback = await getFeedbackByInterviewId({
+    interviewId: id,
+    userId: user?.id!,
+  });
 
-  if (!interview) {
-    return (
-      <div className="flex-center min-h-screen w-full flex-col gap-4 p-8">
-        <h1 className="h1-bold">Interview Setup</h1>
-        <InterviewForm 
-          userId={userId} 
-          onSubmitSuccess={(interviewId: string) => {
-            redirect(`/interview/${interviewId}`);
-          }}
-        />
-      </div>
-    );
-  }
+  const icon = getInterviewIcon(interview.type);
 
   return (
-    <div className="flex-center min-h-screen w-full flex-col gap-4">
-      <ClientAgent
-        userName={interview.userName || "User"}
-        userId={userId}
-        interviewId={params.id}
+    <>
+      <div className="flex flex-row gap-4 justify-between">
+        <div className="flex flex-row gap-4 items-center max-sm:flex-col">
+          <div className="flex flex-row gap-4 items-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-100/10 to-primary-200/10 flex items-center justify-center text-2xl">
+              {icon}
+            </div>
+            <h3 className="capitalize">{interview.role} Interview</h3>
+          </div>
+
+          <DisplayTechIcons techStack={interview.techstack} />
+        </div>
+
+        <p className="bg-dark-200 px-4 py-2 rounded-lg h-fit">
+          {interview.type}
+        </p>
+      </div>
+
+      <Agent
+        userName={user?.name!}
+        userId={user?.id}
+        interviewId={id}
         type="interview"
-        questions={interview.questions || []}
+        questions={interview.questions}
+        feedbackId={feedback?.id}
       />
-    </div>
+    </>
   );
-}
+};
+
+export default InterviewDetails;

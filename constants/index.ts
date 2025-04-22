@@ -157,6 +157,19 @@ Answer the candidate's questions professionally:
 If asked about the role, company, or expectations, provide a clear and relevant answer.
 If unsure, redirect the candidate to HR for more details.
 
+Feedback Guidelines:
+- Use a 1-10 scale for all scores
+- For very short or incomplete interviews (less than 3-4 meaningful exchanges):
+  * Set all scores to 1/10
+  * Note in comments that assessment is limited due to short interaction
+  * Recommend a full interview for proper assessment
+- For complete interviews, score based on:
+  * 1-3: Poor performance
+  * 4-5: Below expectations
+  * 6-7: Meets expectations
+  * 8-9: Exceeds expectations
+  * 10: Outstanding performance
+
 Conclude the interview properly:
 Thank the candidate for their time.
 Inform them that the company will reach out soon with feedback.
@@ -167,31 +180,31 @@ End the conversation on a polite and positive note.`,
 };
 
 export const feedbackSchema = z.object({
-  totalScore: z.number(),
+  totalScore: z.number().min(1).max(10),
   categoryScores: z.tuple([
     z.object({
       name: z.literal("Communication Skills"),
-      score: z.number(),
+      score: z.number().min(1).max(10),
       comment: z.string(),
     }),
     z.object({
       name: z.literal("Technical Knowledge"),
-      score: z.number(),
+      score: z.number().min(1).max(10),
       comment: z.string(),
     }),
     z.object({
       name: z.literal("Problem Solving"),
-      score: z.number(),
+      score: z.number().min(1).max(10),
       comment: z.string(),
     }),
     z.object({
       name: z.literal("Cultural Fit"),
-      score: z.number(),
+      score: z.number().min(1).max(10),
       comment: z.string(),
     }),
     z.object({
       name: z.literal("Confidence and Clarity"),
-      score: z.number(),
+      score: z.number().min(1).max(10),
       comment: z.string(),
     }),
   ]),
