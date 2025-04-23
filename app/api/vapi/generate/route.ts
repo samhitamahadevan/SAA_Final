@@ -17,19 +17,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate questions
+    // Generate questions with difficulty levels
     const { text: rawQuestions } = await generateText({
       model: google("gemini-2.0-flash-001"),
-      prompt: `Generate ${amount} interview questions.
+      prompt: `Generate ${amount} interview questions with varying difficulty levels.
 Role: ${role}
 Level: ${level}
 Type: ${type}
 Tech Stack: ${techstack}
 
-Important: Return ONLY an array of questions. Format must be exactly like this:
-["What is your experience with X?", "How would you implement Y?", "Explain the concept of Z"]
+Important: Return ONLY an array of objects with questions and their difficulty levels. Format must be exactly like this:
+[
+  {"question": "What is your experience with X?", "difficulty": 3},
+  {"question": "How would you implement Y?", "difficulty": 7},
+  {"question": "Explain the concept of Z", "difficulty": 5}
+]
 
-No additional text, no numbering, no explanations - just the array of questions.`,
+Difficulty levels should be from 1-10 where:
+1-3: Basic/Entry level questions
+4-7: Intermediate level questions
+8-10: Advanced/Expert level questions
+
+Distribute the questions across different difficulty levels based on the specified experience level:
+- For "entry" level: 60% easy (1-3), 30% medium (4-7), 10% hard (8-10)
+- For "intermediate" level: 30% easy (1-3), 50% medium (4-7), 20% hard (8-10)
+- For "senior" level: 10% easy (1-3), 40% medium (4-7), 50% hard (8-10)
+
+No additional text, no numbering, no explanations - just the JSON array.`,
     });
 
     console.log("Raw response from Gemini:", rawQuestions);
@@ -47,13 +61,24 @@ No additional text, no numbering, no explanations - just the array of questions.
       const arrayStr = rawQuestions.substring(startIdx, endIdx + 1);
       parsedQuestions = JSON.parse(arrayStr);
 
-      // Validate that it's an array of strings
-      if (!Array.isArray(parsedQuestions) || !parsedQuestions.every(q => typeof q === 'string')) {
-        throw new Error('Response is not an array of strings');
+      // Validate that it's an array of objects with question and difficulty
+      if (!Array.isArray(parsedQuestions) || !parsedQuestions.every(q => 
+        typeof q === 'object' && 
+        typeof q.question === 'string' && 
+        typeof q.difficulty === 'number' &&
+        q.difficulty >= 1 &&
+        q.difficulty <= 10
+      )) {
+        throw new Error('Response is not an array of valid question objects');
       }
 
       // Clean up questions
-      parsedQuestions = parsedQuestions.map(q => q.trim()).filter(q => q.length > 0);
+      parsedQuestions = parsedQuestions
+        .map(q => ({
+          ...q,
+          question: q.question.trim()
+        }))
+        .filter(q => q.question.length > 0);
 
       if (parsedQuestions.length !== amount) {
         throw new Error(`Expected ${amount} questions but got ${parsedQuestions.length}`);
@@ -64,11 +89,14 @@ No additional text, no numbering, no explanations - just the array of questions.
         type,
         level,
         techstack: Array.isArray(techstack) ? techstack : techstack.split(",").map((t: string) => t.trim()),
-        questions: parsedQuestions, // Store only the generated questions
+        questions: parsedQuestions,
         userId: userid,
         finalized: true,
         coverImage: getRandomInterviewCover(),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        currentDifficulty: 5, // Start with medium difficulty
+        maxDifficulty: 10,
+        minDifficulty: 1
       };
 
       // Save to Firestore
