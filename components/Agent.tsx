@@ -35,6 +35,58 @@ const Agent = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
   const [hasInteractionStarted, setHasInteractionStarted] = useState(false);
+  const [currentDifficulty, setCurrentDifficulty] = useState(5); // Start with medium difficulty
+
+  // Function to analyze response and adjust difficulty
+  const analyzeResponseAndAdjustDifficulty = (response: string) => {
+    // Indicators of struggle
+    const hesitationIndicators = [
+      "um", "uh", "hmm", "well...", "let me think",
+      "i'm not sure", "i don't know", "maybe", "possibly",
+      "i guess", "kind of", "sort of"
+    ];
+    
+    // Indicators of confidence
+    const confidenceIndicators = [
+      "definitely", "absolutely", "certainly", "i'm confident",
+      "i know", "clearly", "precisely", "exactly",
+      "specifically", "in my experience"
+    ];
+
+    const response_lower = response.toLowerCase();
+    
+    // Count indicators
+    const hesitationCount = hesitationIndicators.reduce((count, indicator) => 
+      count + (response_lower.match(new RegExp(indicator, 'g')) || []).length, 0
+    );
+    
+    const confidenceCount = confidenceIndicators.reduce((count, indicator) => 
+      count + (response_lower.match(new RegExp(indicator, 'g')) || []).length, 0
+    );
+
+    // Analyze response length and complexity
+    const isDetailedResponse = response.length > 100;
+    const hasCodeExample = response.includes('code') || response.includes('example') || response.includes('function');
+    const hasTechnicalTerms = response.includes('algorithm') || response.includes('complexity') || response.includes('implementation');
+
+    // Calculate difficulty adjustment
+    let difficultyAdjustment = 0;
+    
+    // Reduce difficulty if struggling
+    if (hesitationCount > 2) difficultyAdjustment -= 1;
+    if (response.length < 50) difficultyAdjustment -= 1;
+    
+    // Increase difficulty if doing well
+    if (confidenceCount > 2) difficultyAdjustment += 1;
+    if (isDetailedResponse) difficultyAdjustment += 1;
+    if (hasCodeExample) difficultyAdjustment += 1;
+    if (hasTechnicalTerms) difficultyAdjustment += 1;
+
+    // Update difficulty within bounds
+    setCurrentDifficulty(prev => 
+      Math.min(Math.max(prev + difficultyAdjustment, 1), 10)
+    );
+  };
 
   useEffect(() => {
     const onCallStart = () => {
@@ -50,6 +102,11 @@ const Agent = ({
         const newMessage = { role: message.role, content: message.transcript };
         setMessages((prev) => [...prev, newMessage]);
         setHasInteractionStarted(true);
+        
+        // Analyze user's response and adjust difficulty
+        if (message.role === "user") {
+          analyzeResponseAndAdjustDifficulty(message.transcript);
+        }
       }
     };
 
@@ -128,18 +185,32 @@ const Agent = ({
     setHasInteractionStarted(false);
     setMessages([]);
 
-    let formattedQuestions = "";
-    if (questions) {
-      formattedQuestions = questions
-        .map((question) => `- ${question}`)
-        .join("\n");
+    // Filter and sort questions based on current difficulty
+    let availableQuestions = questions
+      ? questions.filter(q => 
+          Math.abs(q.difficulty - currentDifficulty) <= 2  // Questions within 2 difficulty levels
+        ).sort((a, b) => 
+          Math.abs(a.difficulty - currentDifficulty) - Math.abs(b.difficulty - currentDifficulty)
+        )
+      : [];
+
+    // If no questions in the desired range, take the closest ones
+    if (availableQuestions.length === 0 && questions) {
+      availableQuestions = questions.sort((a, b) => 
+        Math.abs(a.difficulty - currentDifficulty) - Math.abs(b.difficulty - currentDifficulty)
+      );
     }
+
+    const formattedQuestions = availableQuestions
+      .map(q => `- ${q.question} (Difficulty: ${q.difficulty})`)
+      .join("\n");
 
     await vapi.start(interviewer, {
       variableValues: {
         questions: formattedQuestions,
         username: userName,
         userid: userId,
+        currentDifficulty: currentDifficulty.toString()
       },
     });
   };
@@ -174,13 +245,11 @@ const Agent = ({
         {/* User Profile Card */}
         <div className="card-border">
           <div className="card-content">
-            <Image
-              src="/user-avatar.png"
-              alt="profile-image"
-              width={539}
-              height={539}
-              className="rounded-full object-cover size-[120px]"
-            />
+            <div className="avatar">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-16 h-16 text-gray-400">
+                <path fillRule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clipRule="evenodd" />
+              </svg>
+            </div>
             <h3>{userName}</h3>
           </div>
         </div>
@@ -202,25 +271,17 @@ const Agent = ({
         </div>
       )}
 
-      <div className="w-full flex justify-center">
-        {callStatus !== "ACTIVE" ? (
-          <button className="relative btn-call" onClick={() => handleCall()}>
-            <span
-              className={cn(
-                "absolute animate-ping rounded-full opacity-75",
-                callStatus !== "CONNECTING" && "hidden"
-              )}
-            />
-
-            <span className="relative">
-              {callStatus === "INACTIVE" || callStatus === "FINISHED"
-                ? "Call"
-                : ". . ."}
-            </span>
+      <div className="flex justify-center mt-8">
+        {callStatus === CallStatus.INACTIVE && (
+          <button onClick={handleCall} className="btn-call">
+            Start Interview
           </button>
-        ) : (
-          <button className="btn-disconnect" onClick={() => handleDisconnect()}>
-            End
+        )}
+
+        {(callStatus === CallStatus.ACTIVE ||
+          callStatus === CallStatus.CONNECTING) && (
+          <button onClick={handleDisconnect} className="btn-disconnect">
+            {hasInteractionStarted ? "End Interview" : "Cancel"}
           </button>
         )}
       </div>

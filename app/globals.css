@@ -28,6 +28,7 @@
 }
 
 :root {
+  scroll-behavior: smooth;
   --radius: 0.5rem;
   --background: #F5F1EA;
   --foreground: #2A2A2A;
@@ -140,6 +141,9 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  section {
+    scroll-margin-top: 7rem;
   }
   p {
     @apply text-light-400;

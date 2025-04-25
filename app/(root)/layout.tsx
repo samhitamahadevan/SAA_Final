@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { isAuthenticated } from "@/lib/actions/auth.action";
+import Navigation from "@/components/Navigation";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const isUserAuthenticated = await isAuthenticated();
@@ -23,14 +24,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
             <h2 className="text-2xl font-normal text-[#2A2A2A]">PrepPal</h2>
           </Link>
           
-          <div className="flex items-center gap-6">
-            <Link href="/practice" className="text-[#4A4A4A] hover:text-[#2A2A2A] transition-colors">
-              Practice
-            </Link>
-            <Link href="/history" className="text-[#4A4A4A] hover:text-[#2A2A2A] transition-colors">
-              History
-            </Link>
-          </div>
+          <Navigation />
         </div>
       </nav>
 

@@ -15,18 +15,18 @@ export default async function Home() {
   const interviews = user ? await getInterviewsByUserId(user.id) : [];
 
   return (
-    <div className="max-w-[1200px] mx-auto ">
+    <div className="max-w-[1200px] mx-auto">
       {/* Hero Section */}
       <section className="py-20 flex justify-between items-center border-b border-[#EAEAEA]">
         <div className="max-w-[540px]">
-          <h1 className="text-[56px] leading-[1.2] font-normal text-black mb-8 ">
+          <h1 className="text-[56px] leading-[1.2] font-normal text-black mb-8">
             Get Interview-Ready
             with AI-Powered
             Practice & Feedback
           </h1>
           <Link
             href="/interview"
-            className="inline-flex px-8 py-4 text-xl  border-2 border-black rounded-full hover:bg-black hover:text-white transition-colors"
+            className="inline-flex px-8 py-4 text-xl border-2 border-black rounded-full hover:bg-black hover:text-white transition-colors"
           >
             Start Now
           </Link>
@@ -44,8 +44,8 @@ export default async function Home() {
       </section>
 
       {/* Get Started Section */}
-      <section className="py-20 border-b border-[#EAEAEA]">
-        <h2 className="text-[48px] leading-[1.2] font-normal text-black mb-12 ">Get Started</h2>
+      <section id="practice" className="py-20 border-b border-[#EAEAEA]">
+        <h2 className="text-[48px] leading-[1.2] font-normal text-black mb-12">Get Started</h2>
         <div className="grid grid-cols-3 gap-16">
           {[
             {
@@ -80,7 +80,7 @@ export default async function Home() {
       </section>
 
       {/* Your Interviews Section */}
-      <section className="py-20 border-b border-[#EAEAEA]">
+      <section id="history" className="py-20 border-b border-[#EAEAEA]">
         <h2 className="text-[48px] leading-[1.2] font-normal text-black mb-12">Your Interviews</h2>
         {interviews && interviews.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
